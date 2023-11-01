@@ -33,7 +33,7 @@ lightfine(std::string filename = "lightdata.root")
     }
   }
 
-  auto fout = TFile::Open("lightfine.root", "RECREATE");
+  auto fout = TFile::Open("finedata.root", "RECREATE");
   for (auto &h : h_fine_device)
     h.second->Write();
   fout->Close();
