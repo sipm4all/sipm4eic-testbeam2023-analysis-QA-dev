@@ -24,7 +24,7 @@ lightfine(std::string filename = "lightdata.root")
           
           auto index = hit.index;
           auto tdc = hit.tdc;
-          auto cindex = tdc + 4 * index;
+          auto cindex = hit.cindex();
           auto fine = hit.fine;
           h_fine_device[device]->Fill(cindex, fine);
           
