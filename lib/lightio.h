@@ -35,6 +35,7 @@ class lightio {
   unsigned char timing_index[max_hits];
   unsigned char timing_coarse[max_hits];
   unsigned char timing_fine[max_hits];
+  unsigned char timing_tdc[max_hits];
   //
   unsigned int cherenkov_size;            // cherenkov hits in spill
   unsigned short cherenkov_n[max_frames]; // cherenkov hits in frame
@@ -42,6 +43,7 @@ class lightio {
   unsigned char cherenkov_index[max_hits];
   unsigned char cherenkov_coarse[max_hits];
   unsigned char cherenkov_fine[max_hits];
+  unsigned char cherenkov_tdc[max_hits];
   
   lightio() = default;
   
@@ -50,8 +52,8 @@ class lightio {
   void add_part(unsigned char device, unsigned int mask);
   void add_dead(unsigned char device, unsigned int mask);
   void add_trigger0(unsigned char coarse);
-  void add_timing(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine);
-  void add_cherenkov(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine);
+  void add_timing(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine, unsigned char tdc);
+  void add_cherenkov(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine, unsigned char tdc);
   void add_frame() { ++frame_n; };
   void fill();
   void write_and_close();  
@@ -129,21 +131,23 @@ lightio::add_trigger0(unsigned char coarse) {
 }
 
 void
-lightio::add_timing(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine) {
+lightio::add_timing(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine, unsigned char tdc) {
   timing_device[timing_size] = device;
   timing_index[timing_size] = index;
   timing_coarse[timing_size] = coarse;
   timing_fine[timing_size] = fine;
+  timing_tdc[timing_size] = tdc;
   ++timing_n[frame_n];
   ++timing_size;
 }
 
 void
-lightio::add_cherenkov(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine) {
+lightio::add_cherenkov(unsigned char device, unsigned char index, unsigned char coarse, unsigned char fine, unsigned char tdc) {
   cherenkov_device[cherenkov_size] = device;
   cherenkov_index[cherenkov_size] = index;
   cherenkov_coarse[cherenkov_size] = coarse;
   cherenkov_fine[cherenkov_size] = fine;
+  cherenkov_tdc[cherenkov_size] = tdc;
   ++cherenkov_n[frame_n];
   ++cherenkov_size;
 }
@@ -202,12 +206,14 @@ lightio::write_to_tree(TTree *t)
   t->Branch("timing_index", &timing_index, "timing_index[timing_size]/b");
   t->Branch("timing_coarse", &timing_coarse, "timing_coarse[timing_size]/b");
   t->Branch("timing_fine", &timing_fine, "timing_fine[timing_size]/b");
+  t->Branch("timing_tdc", &timing_tdc, "timing_tdc[timing_size]/b");
   t->Branch("cherenkov_size", &cherenkov_size, "cherenkov_size/i");
   t->Branch("cherenkov_n", &cherenkov_n, "cherenkov_n[frame_n]/s");
   t->Branch("cherenkov_device", &cherenkov_device, "cherenkov_device[cherenkov_size]/b");
   t->Branch("cherenkov_index", &cherenkov_index, "cherenkov_index[cherenkov_size]/b");
   t->Branch("cherenkov_coarse", &cherenkov_coarse, "cherenkov_coarse[cherenkov_size]/b");
   t->Branch("cherenkov_fine", &cherenkov_fine, "cherenkov_fine[cherenkov_size]/b");
+  t->Branch("cherenkov_tdc", &cherenkov_tdc, "cherenkov_tdc[cherenkov_size]/b");
 }
   
 void
@@ -238,12 +244,14 @@ lightio::read_from_tree(TTree *t)
   t->SetBranchAddress("timing_index", &timing_index);
   t->SetBranchAddress("timing_coarse", &timing_coarse);
   t->SetBranchAddress("timing_fine", &timing_fine);
+  t->SetBranchAddress("timing_tdc", &timing_tdc);
   t->SetBranchAddress("cherenkov_size", &cherenkov_size);
   t->SetBranchAddress("cherenkov_n", &cherenkov_n);
   t->SetBranchAddress("cherenkov_device", &cherenkov_device);
   t->SetBranchAddress("cherenkov_index", &cherenkov_index);
   t->SetBranchAddress("cherenkov_coarse", &cherenkov_coarse);
   t->SetBranchAddress("cherenkov_fine", &cherenkov_fine);
+  t->SetBranchAddress("cherenkov_tdc", &cherenkov_tdc);
 }
   
 bool
@@ -272,7 +280,7 @@ lightio::next_frame()
   trigger0_vector.clear();
   for (int i = 0; i < trigger0_n[frame_current]; ++i) {
     auto ii = trigger0_offset + i;
-    trigger0_vector.push_back(lightdata(0, 0, trigger0_coarse[ii], 0));
+    trigger0_vector.push_back(lightdata(0, 0, trigger0_coarse[ii], 0, 0));
   }
   trigger0_offset += trigger0_n[frame_current];
   
@@ -280,7 +288,7 @@ lightio::next_frame()
   timing_vector.clear();
   for (int i = 0; i < timing_n[frame_current]; ++i) {
     auto ii = timing_offset + i;
-    timing_vector.push_back(lightdata(timing_device[ii], timing_index[ii], timing_coarse[ii], timing_fine[ii]));
+    timing_vector.push_back(lightdata(timing_device[ii], timing_index[ii], timing_coarse[ii], timing_fine[ii], timing_tdc[ii]));
   }
   timing_offset += timing_n[frame_current];
   
@@ -288,7 +296,7 @@ lightio::next_frame()
   cherenkov_vector.clear();
   for (int i = 0; i < cherenkov_n[frame_current]; ++i) {
     auto ii = cherenkov_offset + i;
-    cherenkov_vector.push_back(lightdata(cherenkov_device[ii], cherenkov_index[ii], cherenkov_coarse[ii], cherenkov_fine[ii]));
+    cherenkov_vector.push_back(lightdata(cherenkov_device[ii], cherenkov_index[ii], cherenkov_coarse[ii], cherenkov_fine[ii], cherenkov_tdc[ii]));
   }
   cherenkov_offset += cherenkov_n[frame_current];
 

@@ -79,7 +79,7 @@ lightwriter(std::string dirname, std::string outfilename = "lightdata.root", uns
 	for (auto &[ichannel, hits] : achip) {
 	  for (auto &hit : hits) {
 	    auto coarse = hit.coarse_time_clock() - iframe * frame_size;
-	    io.add_timing(207, hit.device_index(), coarse, hit.fine);
+	    io.add_timing(207, hit.device_index(), coarse, hit.fine, hit.tdc);
 	  }}}
 		
       /** fill cherenkov hits **/
@@ -89,7 +89,7 @@ lightwriter(std::string dirname, std::string outfilename = "lightdata.root", uns
 	  for (auto &[ichannel, hits] : achip) {
 	    for (auto &hit : hits) {
 	      auto coarse = hit.coarse_time_clock() - iframe * frame_size;
-	      io.add_cherenkov(idevice, hit.device_index(), coarse, hit.fine);
+	      io.add_cherenkov(idevice, hit.device_index(), coarse, hit.fine, hit.tdc);
 	    }}}
 	
       } /** end of loop over devices and hits **/
