@@ -72,7 +72,7 @@ fillfine(std::string dirname, std::string outfilename = "finedata.root", unsigne
     std::cout << "     spill completed " << std::endl;
   } /** end of loop over spills **/
 
-  auto fout = TFile::Open("finedata.root", "RECREATE");
+  auto fout = TFile::Open(outfilename.c_str(), "RECREATE");
   for (auto &h : h_fine_device)
     h.second->Write();
   fout->Close();  
