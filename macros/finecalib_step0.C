@@ -48,7 +48,7 @@ void finecalib_step0(std::string input_filename, std::string output_filename = "
       f_fit->SetParLimits(4, 0.1, 1.);
       //  Fit Fine distribution
       if (use_fit)
-        current_histo->Fit(f_fit, "IMRESQ", "", 20, 120);
+        current_histo->Fit(f_fit, "0Q", "", 20, 120);
       //  Recover MIN and MAX from fit
       auto minimum = f_fit->GetParameter(1);
       auto maximum = f_fit->GetParameter(3);
