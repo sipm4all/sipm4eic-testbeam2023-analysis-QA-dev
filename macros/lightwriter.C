@@ -15,7 +15,7 @@ std::vector<std::string> devices = {
 };
 
 void
-lightwriter(std::string dirname, std::string outfilename = "lightdata.root", unsigned int max_spill = kMaxUInt)
+lightwriter(std::string dirname, std::string outfilename = "lightdata.root", unsigned int max_spill = kMaxUInt, bool verbose = false)
 {
 
   /**
@@ -43,6 +43,7 @@ lightwriter(std::string dirname, std::string outfilename = "lightdata.root", uns
 
   std::cout << " --- initialize framer: frame size = " << frame_size << std::endl;
   sipm4eic::framer framer(filenames, frame_size);
+  framer.verbose(verbose);
   framer.set_trigger_coarse_offset(192, 112);
   
   /** loop over spills **/
@@ -51,13 +52,21 @@ lightwriter(std::string dirname, std::string outfilename = "lightdata.root", uns
 
     io.new_spill(ispill);
 
-    for (auto &[idevice, amask] : framer.part_mask())
+    for (auto &part : framer.part_mask()) {
+      auto idevice = part.first;
+      auto amask = part.second;
       io.add_part(idevice, amask);
-    for (auto &[idevice, amask] : framer.dead_mask())
+    }
+    for (auto &dead : framer.dead_mask()) {
+      auto idevice = dead.first;
+      auto amask = dead.second;
       io.add_dead(idevice, amask);
+    }
 
     /** loop over frames **/
-    for (auto &[iframe, aframe] : framer.frames()) {
+    for (auto &frame : framer.frames()) {
+      auto iframe = frame.first;
+      auto aframe = frame.second;
 
       io.new_frame(iframe);
       
@@ -75,18 +84,28 @@ lightwriter(std::string dirname, std::string outfilename = "lightdata.root", uns
 	io.add_trigger0(trigger.coarse_time_clock() - iframe * frame_size);
 
       /** fill timing hits **/
-      for (auto &[ichip, achip] : aframe[207].hits) {
-	for (auto &[ichannel, hits] : achip) {
+      for (auto &chip : aframe[207].hits) {
+	auto ichip = chip.first;
+	auto achip = chip.second;
+	for (auto &channel : achip) {
+	  auto ichannel = channel.first;
+	  auto hits = channel.second;
 	  for (auto &hit : hits) {
 	    auto coarse = hit.coarse_time_clock() - iframe * frame_size;
 	    io.add_timing(207, hit.device_index(), coarse, hit.fine, hit.tdc);
 	  }}}
 		
       /** fill cherenkov hits **/
-      for (auto &[idevice, adevice] : aframe) {
+      for (auto &device : aframe) {
+	auto idevice = device.first;
+	auto adevice = device.second;
 	if (idevice == 207) continue;
-	for (auto &[ichip, achip] : adevice.hits) {
-	  for (auto &[ichannel, hits] : achip) {
+	for (auto &chip : adevice.hits) {
+	  auto ichip = chip.first;
+	  auto achip = chip.second;
+	  for (auto &channel : achip) {
+	    auto ichannel = channel.first;
+	    auto hits = channel.second;
 	    for (auto &hit : hits) {
 	      auto coarse = hit.coarse_time_clock() - iframe * frame_size;
 	      io.add_cherenkov(idevice, hit.device_index(), coarse, hit.fine, hit.tdc);
@@ -106,6 +125,8 @@ lightwriter(std::string dirname, std::string outfilename = "lightdata.root", uns
    ** WRITE OUTPUT TO FILE
    **/
 
+  std::cout << " --- writing output file: " << outfilename << std::endl;
   io.write_and_close();
+  std::cout << " --- completed " << std::endl;
 
 }
