@@ -68,7 +68,10 @@ class lightio {
   std::vector<lightdata> &get_trigger0_vector() { return trigger0_vector; };
   std::vector<lightdata> &get_timing_vector() { return timing_vector; };
   std::vector<lightdata> &get_cherenkov_vector() { return cherenkov_vector; };
-  
+
+  std::map<std::array<unsigned char, 2>, std::vector<lightdata>> &get_timing_map() { return timing_map; };
+  std::map<std::array<unsigned char, 2>, std::vector<lightdata>> &get_cherenkov_map() { return cherenkov_map; };
+
   TTree *get_tree() { return tree; };
   
  private:
@@ -86,6 +89,9 @@ class lightio {
   std::vector<lightdata> trigger0_vector;
   std::vector<lightdata> timing_vector;
   std::vector<lightdata> cherenkov_vector;
+  
+  std::map<std::array<unsigned char, 2>, std::vector<lightdata>> timing_map;
+  std::map<std::array<unsigned char, 2>, std::vector<lightdata>> cherenkov_map;
   
 };
 
@@ -284,19 +290,23 @@ lightio::next_frame()
   }
   trigger0_offset += trigger0_n[frame_current];
   
-  // fill timing vector
+  // fill timing vector and map
   timing_vector.clear();
+  timing_map.clear();
   for (int i = 0; i < timing_n[frame_current]; ++i) {
     auto ii = timing_offset + i;
     timing_vector.push_back(lightdata(timing_device[ii], timing_index[ii], timing_coarse[ii], timing_fine[ii], timing_tdc[ii]));
+    timing_map[{timing_device[ii], timing_index[ii]}].push_back(lightdata(timing_device[ii], timing_index[ii], timing_coarse[ii], timing_fine[ii], timing_tdc[ii]));
   }
   timing_offset += timing_n[frame_current];
   
-  // fill cherenkov vector
+  // fill cherenkov vector and map
   cherenkov_vector.clear();
+  cherenkov_map.clear();
   for (int i = 0; i < cherenkov_n[frame_current]; ++i) {
     auto ii = cherenkov_offset + i;
     cherenkov_vector.push_back(lightdata(cherenkov_device[ii], cherenkov_index[ii], cherenkov_coarse[ii], cherenkov_fine[ii], cherenkov_tdc[ii]));
+    cherenkov_map[{cherenkov_device[ii], cherenkov_index[ii]}].push_back(lightdata(cherenkov_device[ii], cherenkov_index[ii], cherenkov_coarse[ii], cherenkov_fine[ii], cherenkov_tdc[ii]));
   }
   cherenkov_offset += cherenkov_n[frame_current];
 
