@@ -21,6 +21,9 @@ class lightdata {
     fine(_fine),
     tdc(_tdc) { };
 
+  bool operator<(const lightdata &rhs) const { return time() < rhs.time(); };
+
+  
   int chip() const { return index / 32; };
   int eoch() const { return index % 64; };
   int cindex() const { return tdc + 4 * index; };
@@ -28,6 +31,8 @@ class lightdata {
 
   /** calibration **/
 
+  static constexpr float coarse_to_ns = 3.125;
+  
   static float fine_iif[16][768];
   static float fine_cut[16][768];
   static float fine_off[16][768];
