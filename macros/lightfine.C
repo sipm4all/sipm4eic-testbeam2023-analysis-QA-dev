@@ -1,13 +1,13 @@
 #include "../lib/lightio.h"
 
 void
-lightfine(std::string filename = "lightdata.root")
+lightfine(std::string lightdata_infilename, std::string finedata_outfilename)
 {
 
   std::map<int, TH2F *> h_fine_device;
   
   sipm4eic::lightio io;
-  io.read_from_tree(filename);
+  io.read_from_tree(lightdata_infilename);
 
   while (io.next_spill()) {
     while (io.next_frame()) {
@@ -33,7 +33,7 @@ lightfine(std::string filename = "lightdata.root")
     }
   }
 
-  auto fout = TFile::Open("finedata.root", "RECREATE");
+  auto fout = TFile::Open(finedata_outfilename.c_str(), "RECREATE");
   for (auto &h : h_fine_device)
     h.second->Write();
   fout->Close();
