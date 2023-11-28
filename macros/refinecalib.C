@@ -3,7 +3,7 @@
 auto frefine = new TF1("frefine", "[0] + [1] * x - 0.5 * (1 + TMath::Erf( ( x - [2]) / [3] ))", 0., 128.); 
 
 void
-refinecalib(std::string refinedata_infilename, std::string finecalib_infilename, std::string finecalib_outfilename, int device = 0, bool show_fit = true)
+refinecalib(std::string refinedata_infilename, std::string finecalib_infilename, std::string finecalib_outfilename, int device = 0, bool show_fit = false)
 {
   auto fin = TFile::Open(refinedata_infilename.c_str());
   auto hin = (THnSparse *)fin->Get("hRefine");
@@ -14,8 +14,9 @@ refinecalib(std::string refinedata_infilename, std::string finecalib_infilename,
   for (int idevice = 192; idevice < 208; ++idevice) {
     if (device != 0 && device != idevice) continue;
     std::cout << " --- processing device: " << idevice << std::endl;
-    auto di = device - 192;
+    auto di = idevice - 192;
     hin->GetAxis(0)->SetRange(di + 1, di + 1);
+    hin->GetAxis(1)->SetRange(-1, -1);
 
     /** loop over calibration indices **/
     auto hcindex = hin->Projection(1);
@@ -56,6 +57,7 @@ refinecalib(std::string refinedata_infilename, std::string finecalib_infilename,
       delete hrefine;
       delete prefine;
     }
+    delete hcindex;
   }
 
   /** write calibration **/
