@@ -1,7 +1,7 @@
 #include "../lib/lightio.h"
 
 void
-fillrefine(std::string lightdata_infilename, std::string finecalib_infilename, std::string refinedata_outfilename)
+fillrefine(std::string lightdata_infilename, std::string finecalib_infilename, std::string refinedata_outfilename, bool correct = false)
 {
   
   sipm4eic::lightio io;
@@ -48,6 +48,7 @@ fillrefine(std::string lightdata_infilename, std::string finecalib_infilename, s
 	    T = (Tref * Nref - timing_hits[index].time()) / (Nref - 1);
      
 	  double delta = hit.coarse - T;
+          if (correct) delta = hit.time() - T;
 	  hRefine->Fill(hit.device, hit.cindex(), hit.fine, delta);
 
 	}
