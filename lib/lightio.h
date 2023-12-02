@@ -64,6 +64,7 @@ class lightio {
   void read_from_tree(TTree *t);
   bool next_spill();
   bool next_frame();
+  void reset() { spill_current = frame_current = 0; };
   
   std::vector<lightdata> &get_trigger0_vector() { return trigger0_vector; };
   std::vector<lightdata> &get_timing_vector() { return timing_vector; };

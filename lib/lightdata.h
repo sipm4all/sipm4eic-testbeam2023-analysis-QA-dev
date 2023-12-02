@@ -28,6 +28,7 @@ class lightdata {
   int eoch() const { return index % 64; };
   int cindex() const { return tdc + 4 * index; };
   float time() const;
+  bool near_cut(float dist = 2) const { return fabs(fine - fine_cut[device - 192][cindex()]) < dist; };
 
   /** calibration **/
 
@@ -50,6 +51,7 @@ lightdata::time() const
 {
   auto ci = cindex();
   auto di = device - 192;
+  if (di < 0 || di > 15) return (float)coarse;
   float corr = (float)fine * fine_iif[di][ci] + fine_off[di][ci];
   if (fine >= std::round(fine_cut[di][ci])) corr -= 1.;
   auto time = (float)coarse - corr;
