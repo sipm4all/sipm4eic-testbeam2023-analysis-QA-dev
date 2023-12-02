@@ -37,6 +37,7 @@ class lightdata {
   static float fine_cut[16][768];
   static float fine_off[16][768];
   static bool load_fine_calibration(std::string filename);
+  static bool write_fine_calibration(std::string filename);
 
 };
 
@@ -70,6 +71,29 @@ lightdata::load_fine_calibration(std::string filename)
       fine_cut[i][j] = hFine_cut ? hFine_cut->GetBinContent(j + 1) : 0.;
       fine_off[i][j] = hFine_off ? hFine_off->GetBinContent(j + 1) : -fine_cut[i][j] * fine_iif[i][j];
     }
+  }
+  fin->Close();
+  return true;
+}
+
+bool
+lightdata::write_fine_calibration(std::string filename)
+{
+  std::cout << " --- writing fine calibration: " << filename << std::endl;
+  auto fin = TFile::Open(filename.c_str(), "RECREATE");
+  for (int i = 0; i < 16; ++i) {
+    auto device = 192 + i;
+    auto hFine_iif = new TH1F(Form("hIIF_%d", device), "hIIF", 768, 0, 768);
+    auto hFine_cut = new TH1F(Form("hCUT_%d", device), "hCUT", 768, 0, 768);
+    auto hFine_off = new TH1F(Form("hOFF_%d", device), "hOFF", 768, 0, 768);
+    for (int j = 0; j < 768; ++j) {
+      hFine_iif->SetBinContent(j + 1, fine_iif[i][j]);
+      hFine_cut->SetBinContent(j + 1, fine_cut[i][j]);
+      hFine_off->SetBinContent(j + 1, fine_off[i][j]);
+    }
+    hFine_iif->Write();
+    hFine_cut->Write();
+    hFine_off->Write();
   }
   fin->Close();
   return true;
