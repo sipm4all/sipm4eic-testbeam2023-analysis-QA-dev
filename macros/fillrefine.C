@@ -9,13 +9,15 @@ fillrefine(std::string lightdata_infilename, std::string finecalib_infilename, s
   sipm4eic::lightdata::load_fine_calibration(finecalib_infilename);
 
   /** create output sparse hitogram **/  
-  const Int_t ndims = 4; // device, cindex, fine, delta
-  Int_t bins[ndims]    = {   16,  768, 128,  1024  };
-  Double_t xmin[ndims] = { 192.,   0.,   0.,   -8. };
-  Double_t xmax[ndims] = { 208., 768., 128.,    8. };
-  THnSparse* hRefine = new THnSparseD("hRefine", "hRefine", ndims, bins, xmin, xmax);  
-  
+  const Int_t ndims = 5; // device, cindex, fine, delta, spill
+  Int_t bins[ndims]    = {   16,  768, 128,  1024 , 1000  };
+  Double_t xmin[ndims] = { 192.,   0.,   0., -16. ,    0. };
+  Double_t xmax[ndims] = { 208., 768., 128.,  16. , 1000. };
+  auto hRefine = new THnSparseD("hRefine", "hRefine", ndims, bins, xmin, xmax);  
+
+  int ispill = 0;
   while (io.next_spill()) {
+    int iframe = 0;
     while (io.next_frame()) {
       
       auto timing_vector = io.get_timing_vector();
@@ -49,11 +51,13 @@ fillrefine(std::string lightdata_infilename, std::string finecalib_infilename, s
      
 	  double delta = hit.coarse - T;
           if (correct) delta = hit.time() - T;
-	  hRefine->Fill(hit.device, hit.cindex(), hit.fine, delta);
+	  hRefine->Fill(hit.device, hit.cindex(), hit.fine, delta, ispill);
 
 	}
-      }      
+      }
+      ++iframe;
     }
+    ++ispill;
   }
   
   /** write output **/
