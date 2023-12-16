@@ -93,6 +93,9 @@ class lightio {
   
   std::map<std::array<unsigned char, 2>, std::vector<lightdata>> timing_map;
   std::map<std::array<unsigned char, 2>, std::vector<lightdata>> cherenkov_map;
+
+  bool load_spill_calibration(std::string filename);
+  int spill_clock[16][1000] = {0};
   
 };
 
@@ -229,6 +232,32 @@ lightio::read_from_tree(std::string filename, std::string treename)
   file = TFile::Open(filename.c_str());
   tree = (TTree *)file->Get(treename.c_str());
   read_from_tree(tree);
+
+  //  return;
+  
+  /** automatically load spill calib **/
+  std::size_t found = filename.find_last_of("/\\");
+  auto spillcalib_filename = filename.substr(0, found) + "/spillcalib.root";
+  load_spill_calibration(spillcalib_filename.c_str());
+}
+
+bool
+lightio::load_spill_calibration(std::string filename)
+{
+  if (filename.empty()) return true;
+  std::cout << " --- loading spill calibration: " << filename << std::endl;
+  auto fin = TFile::Open(filename.c_str());
+  if (!fin || !fin->IsOpen()) return false;
+  for (int i = 0; i < 16; ++i) {
+    auto device = 192 + i;
+    auto hSPILL = (TH1 *)fin->Get(Form("hSPILL_%d", device));
+    for (int j = 0; j < 1000; ++j) {
+      spill_clock[i][j] = hSPILL ? hSPILL->GetBinContent(j + 1)  : 0.;
+    }
+  }
+  fin->Close();
+  return true;
+
 }
 
 void
@@ -282,7 +311,8 @@ lightio::next_frame()
 {
   if (frame_current >= frame_n)
     return false;
-
+  int spill = spill_current - 1;
+  
   // fill trigger0 vector
   trigger0_vector.clear();
   for (int i = 0; i < trigger0_n[frame_current]; ++i) {
@@ -296,8 +326,14 @@ lightio::next_frame()
   timing_map.clear();
   for (int i = 0; i < timing_n[frame_current]; ++i) {
     auto ii = timing_offset + i;
-    timing_vector.push_back(lightdata(timing_device[ii], timing_index[ii], timing_coarse[ii], timing_fine[ii], timing_tdc[ii]));
-    timing_map[{timing_device[ii], timing_index[ii]}].push_back(lightdata(timing_device[ii], timing_index[ii], timing_coarse[ii], timing_fine[ii], timing_tdc[ii]));
+    auto device = timing_device[ii];
+    auto index = timing_index[ii];
+    auto coarse = timing_coarse[ii] - spill_clock[device - 192][spill];
+    auto fine = timing_fine[ii];
+    auto tdc = timing_tdc[ii];
+    auto data = lightdata(device, index, coarse, fine, tdc);
+    timing_vector.push_back(data);
+    timing_map[{device, index}].push_back(data);
   }
   timing_offset += timing_n[frame_current];
   
@@ -306,8 +342,14 @@ lightio::next_frame()
   cherenkov_map.clear();
   for (int i = 0; i < cherenkov_n[frame_current]; ++i) {
     auto ii = cherenkov_offset + i;
-    cherenkov_vector.push_back(lightdata(cherenkov_device[ii], cherenkov_index[ii], cherenkov_coarse[ii], cherenkov_fine[ii], cherenkov_tdc[ii]));
-    cherenkov_map[{cherenkov_device[ii], cherenkov_index[ii]}].push_back(lightdata(cherenkov_device[ii], cherenkov_index[ii], cherenkov_coarse[ii], cherenkov_fine[ii], cherenkov_tdc[ii]));
+    auto device = cherenkov_device[ii];
+    auto index = cherenkov_index[ii];
+    auto coarse = cherenkov_coarse[ii] - spill_clock[device - 192][spill];
+    auto fine = cherenkov_fine[ii];
+    auto tdc = cherenkov_tdc[ii];
+    auto data = lightdata(device, index, coarse, fine, tdc);
+    cherenkov_vector.push_back(data);
+    cherenkov_map[{device, index}].push_back(data);
   }
   cherenkov_offset += cherenkov_n[frame_current];
 

@@ -21,7 +21,7 @@ refinecalib(std::string refinedata_infilename, std::string finecalib_infilename,
     /** loop over calibration indices **/
     auto hcindex = hin->Projection(1);
     for (int ci = 0; ci < 768; ++ci) {
-      if (hcindex->GetBinContent(ci + 1) < 100) continue;
+      if (hcindex->GetBinContent(ci + 1) < 500) continue;
       if (ci % 4 == 0) std::cout << " --- processing cindex: " << ci << " " << hcindex->GetBinContent(ci + 1) << std::endl;
       hin->GetAxis(1)->SetRange(ci + 1, ci + 1);
       auto hrefine = hin->Projection(3, 2);
@@ -48,10 +48,12 @@ refinecalib(std::string refinedata_infilename, std::string finecalib_infilename,
       
       if (show_fit) {
 	prefine->SetMarkerStyle(20);
+        hrefine->GetYaxis()->SetRangeUser(-4, 4.);
 	hrefine->Draw("colz");
 	prefine->Draw("same");
 	frefine->Draw("same");
 	gPad->Update();
+        getchar();
       }
     
       delete hrefine;
