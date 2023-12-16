@@ -20,8 +20,14 @@ fillrefine(std::string lightdata_infilename, std::string finecalib_infilename, s
     int iframe = 0;
     while (io.next_frame()) {
       
+      auto trigger0_vector = io.get_trigger0_vector();
+      auto ref = trigger0_vector[0].coarse;
+      
       auto timing_vector = io.get_timing_vector();
       auto cherenkov_vector = io.get_cherenkov_vector();
+      
+      auto timing_map = io.get_timing_map();
+      auto cherenkov_map = io.get_cherenkov_map();
       
       /** collect timing hits **/
       std::map<int, sipm4eic::lightdata> timing_hits;
@@ -38,28 +44,32 @@ fillrefine(std::string lightdata_infilename, std::string finecalib_infilename, s
       for (auto &[index, hit] : timing_hits)
 	Tref += hit.time();
       Tref /= Nref;
-
+      
       /** fill histogram **/
-      for (auto &device_vector : {timing_vector, cherenkov_vector}) {
-	for (auto &hit : device_vector) {
-	  auto T = Tref;
-
-	  /** compute reference time excluding this channel if included in timing **/
-	  auto index = hit.index;
-	  if (hit.device == 207 && timing_hits.count(index))
-	    T = (Tref * Nref - timing_hits[index].time()) / (Nref - 1);
-     
-	  double delta = hit.coarse - T;
-          if (correct) delta = hit.time() - T;
-	  hRefine->Fill(hit.device, hit.cindex(), hit.fine, delta, ispill);
-
-	}
+      std::vector<std::map<std::array<unsigned char, 2>, std::vector<sipm4eic::lightdata>>> device_maps = {timing_map, cherenkov_map};
+      for (auto &device_map : device_maps) {
+        for (auto &[index_id, hits] : device_map) {
+          std::sort(hits.begin(), hits.end());
+          for (auto &hit : hits) {
+            
+            /** compute reference time excluding this channel if included in timing **/
+            auto T = Tref;
+            auto index = hit.index;
+            if (hit.device == 207 && timing_hits.count(index))
+              T = (Tref * Nref - timing_hits[index].time()) / (Nref - 1);
+            
+            double delta = hit.coarse - T;
+            if (correct) delta = hit.time() - T;
+            hRefine->Fill(hit.device, hit.cindex(), hit.fine, delta, ispill);
+            
+          }
+        }
       }
       ++iframe;
     }
     ++ispill;
   }
-  
+    
   /** write output **/
   auto fout = TFile::Open(refinedata_outfilename.c_str(), "RECREATE");
   std::cout << " --- written refinedata: " << refinedata_outfilename << std::endl;
