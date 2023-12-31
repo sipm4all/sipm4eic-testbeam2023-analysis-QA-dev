@@ -76,8 +76,8 @@ main(int argc, char *argv[])
   /** initialise device **/
   const int Nx = 4;
   const int Ny = 4;
-  const int Nr = 12;
-  const int Nh = 1000 * Nx * Ny * Nr;
+  const int Nr = 16;
+  const int Nh = 256 * Nx * Ny * Nr;
   auto xmap = new float[Nh];
   auto ymap = new float[Nh];
   auto rmap = new float [Nh];

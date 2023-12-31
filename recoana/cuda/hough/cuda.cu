@@ -27,29 +27,29 @@ float *gpu_xmap = nullptr;
 float *gpu_ymap = nullptr;
 float *gpu_rmap = nullptr;
 
-const float x_min = -9.75;
-const float x_stp = 0.5;
-const float y_min = -9.75;
-const float y_stp = 0.5;
-const float r_min = 30.;
-const float r_stp = 0.5;
+const float x_min = -15.5;
+const float x_stp = 1.;
+const float y_min = -15.5;
+const float y_stp = 1.;
+const float r_min = 32.;
+const float r_stp = 1.;
 
 __global__ void
 hough_gpu_init(float *xmap, float *ymap, float *rmap, int Nx, int Ny, int Nr) {
 
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-  int ix = threadIdx.x % 10;
-  int iy = (threadIdx.x / 10) % 10;
-  int ir = threadIdx.x / 100;
+  int ix = threadIdx.x % 8;
+  int iy = (threadIdx.x / 8) % 8;
+  int ir = threadIdx.x / 64;
   
   int iX = blockIdx.x % Nx;
   int iY = (blockIdx.x / Nx) % Ny;
   int iR = blockIdx.x / (Nx * Ny);
   
-  ix += iX * 10;
-  iy += iY * 10;
-  ir += iR * 10;
+  ix += iX * 8;
+  iy += iY * 8;
+  ir += iR * 4;
   
   float x = x_min + ix * x_stp;
   float y = y_min + iy * y_stp;
@@ -84,7 +84,7 @@ hough_gpu_transform(float *xmap, float *ymap, float *rmap, float *x, float *y, f
 void
 hough_init(float *cpu_xmap, float *cpu_ymap, float *cpu_rmap, int Nx, int Ny, int Nr)
 {
-  int Nh = 1000 * Nx * Ny * Nr;
+  int Nh = 256 * Nx * Ny * Nr;
   
   // alloc device memory
   cudaMalloc((void **)&gpu_x, 1024 * sizeof(float));
@@ -96,7 +96,7 @@ hough_init(float *cpu_xmap, float *cpu_ymap, float *cpu_rmap, int Nx, int Ny, in
   cudaMalloc((void **)&gpu_rmap, Nh * sizeof(float));
 
   // launch kernel
-  dim3 block_size(1000, 1, 1);
+  dim3 block_size(256, 1, 1);
   dim3 grid_size(Nx * Ny * Nr, 1, 1);
   hough_gpu_init<<<grid_size, block_size>>>(gpu_xmap, gpu_ymap, gpu_rmap, Nx, Ny, Nr);
 
@@ -123,17 +123,19 @@ hough_free()
 void
 hough_transform(float *cpu_x, float *cpu_y, float *cpu_h, int cpu_n, int Nx, int Ny, int Nr)
 {
-  int Nh = 1000 * Nx * Ny * Nr;
+  int Nh = 256 * Nx * Ny * Nr;
 
   // copy data to device
   cudaMemcpy(gpu_x, cpu_x, cpu_n * sizeof(float), cudaMemcpyHostToDevice);
   cudaMemcpy(gpu_y, cpu_y, cpu_n * sizeof(float), cudaMemcpyHostToDevice);
   
   // launch kernel
-  dim3 block_size(1000, 1, 1);
+  dim3 block_size(256, 1, 1);
   dim3 grid_size(Nx * Ny * Nr, 1, 1);
   hough_gpu_transform<<<grid_size, block_size>>>(gpu_xmap, gpu_ymap, gpu_rmap, gpu_x, gpu_y, gpu_h, cpu_n);
 
+  
+  
   // copy data from device
   cudaMemcpy(cpu_h, gpu_h, Nh * sizeof(float), cudaMemcpyDeviceToHost);
 }
