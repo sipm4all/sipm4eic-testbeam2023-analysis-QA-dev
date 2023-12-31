@@ -5,7 +5,7 @@
 #include "TTree.h"
 
 extern void hough_init(float *cpu_xmap, float *cpu_ymap, float *cpu_rmap, int Nx, int Ny, int Nr);
-extern void hough_transform(float *cpu_x, float *cpu_y, float *cpu_h, int cpu_n, int Nx, int Ny, int Nr);
+extern void hough_transform(float *cpu_x, float *cpu_y, float *cpu_rh, int *cpu_rhi, int cpu_n, int Nx, int Ny, int Nr);
 extern void hough_free();
 
 struct program_options_t {
@@ -78,6 +78,7 @@ main(int argc, char *argv[])
   const int Ny = 4;
   const int Nr = 16;
   const int Nh = 256 * Nx * Ny * Nr;
+  const int Nrh = Nx * Ny * Nr;
   auto xmap = new float[Nh];
   auto ymap = new float[Nh];
   auto rmap = new float [Nh];
@@ -85,18 +86,20 @@ main(int argc, char *argv[])
 
   /** loop over events **/
   auto hough = new float[Nh];
+  auto rhough = new float[Nrh];
+  auto rhoughi = new int[Nrh];
   for (int iev = 0; iev < nev; ++iev) {
-    if (iev % 1000 == 0) std::cout << iev << " / " << nev << std::endl;
     tin->GetEntry(iev);
 
     /** reset ring data **/
     N = 0;
     
     /** hough transform **/
-    hough_transform(x, y, hough, n, Nx, Ny, Nr);
+    hough_transform(x, y, rhough, rhoughi, n, Nx, Ny, Nr);
 
     /** get maximum **/
-    int imax = std::distance(hough, std::max_element(hough, hough + Nh));
+    int rimax = std::distance(rhough, std::max_element(rhough, rhough + Nrh));
+    int imax = rhoughi[rimax];
     X0[N] = xmap[imax];
     Y0[N] = ymap[imax];
     R[N] = rmap[imax];
