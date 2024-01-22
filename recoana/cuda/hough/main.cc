@@ -3,14 +3,29 @@
 #include <algorithm>
 #include "TFile.h"
 #include "TTree.h"
+#include "common.h"
 
-extern void hough_init(float *cpu_xmap, float *cpu_ymap, float *cpu_rmap, int Nx, int Ny, int Nr);
-extern void hough_transform(float *cpu_x, float *cpu_y, float *cpu_rh, int *cpu_rhi, int cpu_n, int Nx, int Ny, int Nr);
+extern void hough_init(data_t data);
+extern void hough_transform(data_t data);
 extern void hough_free();
 
 struct program_options_t {
   std::string recodata, ringdata;
+  float xmin, xmax, ymin, ymax, rmin, rmax, tmin, tmax;
+  int xbins, ybins, rbins, tbins;
+  float tsigma;
 };
+
+/**
+const float x_min = -7.5;
+const float x_stp = 1.;
+const float y_min = -7.5;
+const float y_stp = 1.;
+const float r_min = 32.;
+const float r_stp = 1.;
+const float t_min = -787.5;
+const float t_stp = 25.;
+**/
 
 void
 process_program_options(int argc, char *argv[], program_options_t &opt)
@@ -23,6 +38,19 @@ process_program_options(int argc, char *argv[], program_options_t &opt)
       ("help"             , "Print help messages")
       ("recodata"         , po::value<std::string>(&opt.recodata)->required(), "Reconstructed data input filename")
       ("ringdata"         , po::value<std::string>(&opt.ringdata)->required(), "Ring data output filename")
+      ("xmin"             , po::value<float>(&opt.xmin)->default_value(-10.), "Hough space xmin")
+      ("xmax"             , po::value<float>(&opt.xmax)->default_value(10.), "Hough space xmax")
+      ("xbins"            , po::value<int>(&opt.xbins)->default_value(20), "Hough space xbins")
+      ("ymin"             , po::value<float>(&opt.ymin)->default_value(-10.), "Hough space ymin")
+      ("ymax"             , po::value<float>(&opt.ymax)->default_value(10.), "Hough space ymax")
+      ("ybins"            , po::value<int>(&opt.ybins)->default_value(20), "Hough space ybins")
+      ("rmin"             , po::value<float>(&opt.rmin)->default_value(30.), "Hough space rmin")
+      ("rmax"             , po::value<float>(&opt.rmax)->default_value(100.), "Hough space rmax")
+      ("rbins"            , po::value<int>(&opt.rbins)->default_value(70), "Hough space rbins")
+      ("tmin"             , po::value<float>(&opt.tmin)->default_value(-800), "Hough space tmin")
+      ("tmax"             , po::value<float>(&opt.tmax)->default_value(800.), "Hough space tmax")
+      ("tbins"            , po::value<int>(&opt.tbins)->default_value(32), "Hough space tbins")
+      ("tsigma"            , po::value<float>(&opt.tsigma)->default_value(15.), "Hough space tsigma")
       ;
     
     po::variables_map vm;
@@ -68,41 +96,65 @@ main(int argc, char *argv[])
   float X0[256];
   float Y0[256];
   float R[256];
+  float T[256];
   tout->Branch("N", &N, "N/s");
   tout->Branch("X0", &X0, "X0[N]/F");
   tout->Branch("Y0", &Y0, "Y0[N]/F");
   tout->Branch("R", &R, "R[N]/F");
+  tout->Branch("T", &T, "T[N]/F");
 
-  /** initialise device **/
-  const int Nx = 4;
-  const int Ny = 4;
-  const int Nr = 16;
-  const int Nh = 256 * Nx * Ny * Nr;
-  const int Nrh = Nx * Ny * Nr;
-  auto xmap = new float[Nh];
-  auto ymap = new float[Nh];
-  auto rmap = new float [Nh];
-  hough_init(xmap, ymap, rmap, Nx, Ny, Nr);
+  /** initialise **/
+  data_t data;
+  data.min.x = opt.xmin;
+  data.max.x = opt.xmax;
+  data.bins.x = opt.xbins;
+  data.min.y = opt.ymin;
+  data.max.y = opt.ymax;
+  data.bins.y = opt.ybins;
+  data.min.r = opt.rmin;
+  data.max.r = opt.rmax;
+  data.bins.r = opt.rbins;
+  data.min.t = opt.tmin;
+  data.max.t = opt.tmax;
+  data.bins.t = opt.tbins;
+  data.sigma.t = opt.tsigma;
+  
+  const int size = data.bins.x * data.bins.y * data.bins.r * data.bins.t;
+  const int grid_size = 1 + (size - 1) / 256;
+  data.map.x = new float[size];
+  data.map.y = new float[size];
+  data.map.r = new float[size];
+  data.map.t = new float[size];
+  data.hough.h = new float[size];
+  data.hough.rh = new float[grid_size];
+  data.hough.rhi = new int[grid_size];
+  hough_init(data);
 
   /** loop over events **/
-  auto hough = new float[Nh];
-  auto rhough = new float[Nrh];
-  auto rhoughi = new int[Nrh];
   for (int iev = 0; iev < nev; ++iev) {
     tin->GetEntry(iev);
-
+    if (iev % 1000 == 0)
+      std::cout << "processing event: " << iev << " / " << nev << std::endl;
+    
+    /** set data points **/
+    data.points.n = n;
+    data.points.x = x;
+    data.points.y = y;
+    data.points.t = t;
+    
     /** reset ring data **/
     N = 0;
     
     /** hough transform **/
-    hough_transform(x, y, rhough, rhoughi, n, Nx, Ny, Nr);
+    hough_transform(data);
 
     /** get maximum **/
-    int rimax = std::distance(rhough, std::max_element(rhough, rhough + Nrh));
-    int imax = rhoughi[rimax];
-    X0[N] = xmap[imax];
-    Y0[N] = ymap[imax];
-    R[N] = rmap[imax];
+    int rimax = std::distance(data.hough.rh, std::max_element(data.hough.rh, data.hough.rh + grid_size));
+    int imax = data.hough.rhi[rimax];
+    X0[N] = data.map.x[imax];
+    Y0[N] = data.map.y[imax];
+    R[N] = data.map.r[imax];
+    T[N] = data.map.t[imax];
 
     /** fill tree with ring data **/
     ++N;
@@ -110,10 +162,13 @@ main(int argc, char *argv[])
   }
 
   /** free **/
-  delete [] xmap;
-  delete [] ymap;
-  delete [] rmap;
-  delete [] hough;
+  delete [] data.map.x;
+  delete [] data.map.y;
+  delete [] data.map.r;
+  delete [] data.map.t;
+  delete [] data.hough.h;
+  delete [] data.hough.rh;
+  delete [] data.hough.rhi;
   
   /** free device memory **/
   hough_free();
