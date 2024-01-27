@@ -28,6 +28,9 @@ void finecalib_step0(std::string input_filename, std::string output_filename = "
         //  Leave 0 as dummy value in the calibration object
         continue;
       }
+      // in ToT mode there might be plenty of FINE = 0, remove them
+      current_histo->SetBinContent(1, 0.);
+      current_histo->SetBinError(1, 0.);
       //  Setup fit function
       auto height_guess = current_histo->GetBinContent(current_histo->GetMaximumBin());
       auto critical_value = 0.25 * height_guess;
