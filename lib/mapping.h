@@ -114,18 +114,18 @@ std::map<int, std::vector<int>> matrix_mapping = {
     
 /*******************************************************************************/
 
-std::array<int, 2>
-get_geo(int matrix, int eo_channel, int pdu)
+std::array<int, 3>
+get_geo(int pdu, int matrix, int eo_channel)
 {
   auto do_channel = get_do_channel(matrix, eo_channel);
-  std::array<int, 2> geo = {do_channel / 8, do_channel % 8};
+  std::array<int, 3> geo = {pdu, do_channel / 8, do_channel % 8};
 
-  if (matrix == 2 || matrix == 4) geo[1] += 8;
-  if (matrix == 3 || matrix == 4) geo[0] += 8;
+  if (matrix == 2 || matrix == 4) geo[2] += 8;
+  if (matrix == 3 || matrix == 4) geo[1] += 8;
 
-  if (rotateme[pdu]) {
-    geo[0] = 15 - geo[0];
+  if (rotateme[pdu - 1]) {
     geo[1] = 15 - geo[1];
+    geo[2] = 15 - geo[2];
   }
   
   return geo;
@@ -137,10 +137,9 @@ get_geo(lightdata cherenkov)
   int device = cherenkov.device;
   auto chip = cherenkov.chip();
   auto eoch = cherenkov.eoch();
-  auto pdu = pdu_matrix_map[{device, chip}][0] - 1;
+  auto pdu = pdu_matrix_map[{device, chip}][0];
   auto matrix = pdu_matrix_map[{device, chip}][1];
-  auto geo = get_geo(matrix, eoch, pdu);
-  return {pdu, geo[0], geo[1]};
+  return get_geo(pdu, matrix, eoch);
 }
   
 /*******************************************************************************/
@@ -151,9 +150,13 @@ get_position(std::array<int, 3> geo)
   int pdu = geo[0];
   int col = geo[1];
   int row = geo[2];
-  float x = 0.1 + 0.2 + 1.6 + 3.2 * col + (0.2 + 0.1 + 0.2) * col / 8 + placement_xy[pdu + 1][0];
-  float y = 0.1 + 0.2 + 1.6 + 3.2 * row + (0.2 + 0.1 + 0.2) * row / 8 + placement_xy[pdu + 1][1];
-
+  float x = 0.05 + 0.1 + 0.2 + 1.5 + 3.2 * col; // not clear why the 0.05, but it works to center the thing
+  float y = 0.05 + 0.1 + 0.2 + 1.5 + 3.2 * row;
+  if (col > 7) x += 0.3;
+  if (row > 7) y += 0.3;
+  x += placement_xy[pdu][0];
+  y += placement_xy[pdu][1];
+  
   return {x, y};
 }
 
