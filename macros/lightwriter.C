@@ -15,7 +15,7 @@ std::vector<std::string> devices = {
 };
 
 void
-lightwriter(std::string dirname, std::string outfilename, std::string fineoutfilename, unsigned int max_spill = kMaxUInt, bool verbose = false)
+lightwriter(std::vector<std::string> filenames, std::string outfilename, std::string fineoutfilename, unsigned int max_spill = kMaxUInt, bool verbose = false)
 {
 
   /**
@@ -32,18 +32,6 @@ lightwriter(std::string dirname, std::string outfilename, std::string fineoutfil
   std::map<int, TH2F *> h_fine_device;
 
   
-  /** 
-   ** BUILD INPUT FILE LIST
-   **/
-
-  std::vector<std::string> filenames;
-  for (auto device : devices) {
-    for (int ififo = 0; ififo < 25; ++ififo) {
-      std::string filename = dirname + "/" + device + "/decoded/alcdaq.fifo_" + std::to_string(ififo) + ".root";
-      filenames.push_back(filename);
-    }
-  }
-
   /** 
    ** INITIALIZE FRAMER AND PROCESS
    **/
@@ -176,12 +164,34 @@ lightwriter(std::string dirname, std::string outfilename, std::string fineoutfil
   std::cout << " --- writing light data output file: " << outfilename << std::endl;
   io.write_and_close();
 
-  std::cout << " --- writing fine data output file: " << fineoutfilename << std::endl;
-  auto fout = TFile::Open(fineoutfilename.c_str(), "RECREATE");
-  for (auto &h : h_fine_device)
-    h.second->Write();
-  fout->Close();  
+  if (!fineoutfilename.empty()) {
+    std::cout << " --- writing fine data output file: " << fineoutfilename << std::endl;
+    auto fout = TFile::Open(fineoutfilename.c_str(), "RECREATE");
+    for (auto &h : h_fine_device)
+      h.second->Write();
+    fout->Close();
+  }
 
   std::cout << " --- completed: " << n_spills << " spills " << std::endl;
 
 }
+
+void
+lightwriter(std::string dirname, std::string outfilename, std::string fineoutfilename, unsigned int max_spill = kMaxUInt, bool verbose = false)
+{
+
+  /** 
+   ** BUILD INPUT FILE LIST
+   **/
+
+  std::vector<std::string> filenames;
+  for (auto device : devices) {
+    for (int ififo = 0; ififo < 25; ++ififo) {
+      std::string filename = dirname + "/" + device + "/decoded/alcdaq.fifo_" + std::to_string(ififo) + ".root";
+      filenames.push_back(filename);
+    }
+  }
+
+  lightwriter(filenames, outfilename, fineoutfilename, max_spill, verbose);
+}
+
