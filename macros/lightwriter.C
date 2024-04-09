@@ -45,8 +45,10 @@ lightwriter(std::vector<std::string> filenames, std::string outfilename, std::st
   int n_spills = 0, n_frames = 0;
   for (int ispill = 0; ispill < max_spill && framer.next_spill(); ++ispill) {
 
+/** keep this, but it is not needed **/
+
     /**
-     ** FINE FILL 
+     ** FINE FILL
      **/
 
     /** loop over frames **/
@@ -81,11 +83,15 @@ lightwriter(std::vector<std::string> filenames, std::string outfilename, std::st
       } /** end of loop over devices and hits **/
     } /** end of loop over frames **/
 
+/** end of keep this, but is it not needed **/
+
     /**
      ** LIGHT DATA
      **/
     
     io.new_spill(ispill);
+
+/** keep this, but it it not needed **/
 
     for (auto &part : framer.part_mask()) {
       auto idevice = part.first;
@@ -98,13 +104,19 @@ lightwriter(std::vector<std::string> filenames, std::string outfilename, std::st
       io.add_dead(idevice, amask);
     }
 
+/** end of keep this, but is it not needed **/
+
     /** loop over frames **/
     for (auto &frame : framer.frames()) {
       auto iframe = frame.first;
       auto aframe = frame.second;
 
       io.new_frame(iframe);
-      
+
+/** this is the part where the selection should happen
+    remove it while doing analysis on the data 
+    and then you will replace it with your selection **/
+
       /** selection on Luca's trigger, device 192 **/
       if (aframe[192].triggers.size() != 1) continue;
       
@@ -112,6 +124,12 @@ lightwriter(std::vector<std::string> filenames, std::string outfilename, std::st
       auto nsipm4 = aframe[207].hits[4].size();
       auto nsipm5 = aframe[207].hits[5].size();
       if (nsipm4 == 0 && nsipm5 == 0) continue;
+
+/** end of this is the part where the selection should happen
+    remove it while doing analysis on the data 
+    and then you will replace it with your selection **/
+
+/** keep this, but it is not needed **/
 
       /** fill trigger0 hits **/
       auto trigger0 = aframe[192].triggers;
@@ -129,16 +147,24 @@ lightwriter(std::vector<std::string> filenames, std::string outfilename, std::st
 	    auto coarse = hit.coarse_time_clock() - iframe * frame_size;
 	    io.add_timing(207, hit.device_index(), coarse, hit.fine, hit.tdc);
 	  }}}
-		
+
+/** end of keep this, but it is not needed **/
+
+/** this is the data you are interested into for the analysis **/
+/** notice that this part is the part that fill the output data 
+    you should keep the output with the same structure
+    you just need another loop over the data similar to this one 
+    to define your event selection **/
+
       /** fill cherenkov hits **/
-      for (auto &device : aframe) {
+      for (auto &device : aframe) { // the devices are the kc705 boards
 	auto idevice = device.first;
 	auto adevice = device.second;
 	if (idevice == 207) continue;
-	for (auto &chip : adevice.hits) {
+	for (auto &chip : adevice.hits) { // the chips are the ALCOR chips
 	  auto ichip = chip.first;
 	  auto achip = chip.second;
-	  for (auto &channel : achip) {
+	  for (auto &channel : achip) { // the channels are the SiPM sensors
 	    auto ichannel = channel.first;
 	    auto hits = channel.second;
 	    for (auto &hit : hits) {
