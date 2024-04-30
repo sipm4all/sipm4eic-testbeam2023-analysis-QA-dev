@@ -65,11 +65,16 @@ class lightio {
   bool next_spill();
   bool next_frame();
   void reset() { spill_current = frame_current = 0; };
+
   
   std::vector<lightdata> &get_trigger0_vector() { return trigger0_vector; };
   std::vector<lightdata> &get_timing_vector() { return timing_vector; };
   std::vector<lightdata> &get_cherenkov_vector() { return cherenkov_vector; };
 
+  unsigned int get_current_spill() { return spill_current; };
+  unsigned int get_current_frame() { return frame_current; };
+  unsigned int get_current_frame_id() { return frame[frame_current]; };
+  
   std::map<std::array<unsigned char, 2>, std::vector<lightdata>> &get_timing_map() { return timing_map; };
   std::map<std::array<unsigned char, 2>, std::vector<lightdata>> &get_cherenkov_map() { return cherenkov_map; };
 
