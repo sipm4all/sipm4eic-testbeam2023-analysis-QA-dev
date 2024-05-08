@@ -3,13 +3,17 @@
 #include "../lib/mapping.h"
 #include "../lib/utility.h"
 
-void recoQA(std::string input_file = "recodata.root", std::string output_file = "out.root", std::string save_dir = "./images/")
+void recoQA(std::string input_file = "recodata_2.root", std::string output_file = "out.root", std::string save_dir = "./images/")
 {
+  //  Style
+  gStyle->SetPalette(kInvertedDarkBodyRadiator);
+
   //  Output
   auto hPersistance2D = new TH2F("hPersistance2D", ";X (mm);Y (mm); t (ns)", 396, -99, 99, 396, -99, 99);
   auto hPersistance2D_initial_guess = new TH2F("hPersistance2D_initial_guess", ";X (mm);Y (mm); t (ns)", 66, -99, 99, 66, -99, 99);
   auto hMap_fullsetup_SiPM = new TH2F("hMap_fullsetup_SiPM", ";X (mm);Y (mm)", 4000, -100, 100, 4000, -100, 100);
   auto hMap_availsetup_SiPM = new TH2F("hMap_availsetup_SiPM", ";X (mm);Y (mm)", 4000, -100, 100, 4000, -100, 100);
+  auto hRadius_Distribution = new TH2F("hRadius_Distribution", ";N_{#gamma};R (mm)", 50, 0, 50, 100, 0, 100);
   std::vector<TH2F *> hMap_found_Rings;
 
   //  Link TTree to local data instance
@@ -30,6 +34,8 @@ void recoQA(std::string input_file = "recodata.root", std::string output_file = 
     {
       cout << "[INFO] event: " << iEv << endl;
     }
+    if (iEv == 2500)
+      break;
 
     //  Persistance plot
     fill_persistance(hPersistance2D, reco_data);
@@ -56,8 +62,8 @@ void recoQA(std::string input_file = "recodata.root", std::string output_file = 
   auto found_rings = fit_multiple_rings(hPersistance2D_initial_guess);
 
   //  === Rings coverage plots
-  auto plot_check_coordinates = plot_check_coordinates(hPersistance2D, found_rings);
-  plot_check_coordinates->SaveAs(Form("%s/plot_check_coordinates.png", save_dir.c_str()));
+  auto plot_check_coordinates_canvas = plot_check_coordinates(hPersistance2D, found_rings);
+  plot_check_coordinates_canvas->SaveAs(Form("%s/plot_check_coordinates.png", save_dir.c_str()));
 
   //  Second loop on events
   cout << "[INFO] Start of analysis loop" << endl;
@@ -70,13 +76,24 @@ void recoQA(std::string input_file = "recodata.root", std::string output_file = 
     {
       cout << "[INFO] event: " << iEv << endl;
     }
+
+    //  Loop on requested cuts
+    auto iRing = -1;
+    for (auto current_ring : found_rings)
+    {
+      iRing++;
+      for (auto iPnt = 0; iPnt < reco_data.n; iPnt++)
+      {
+        //  Radius distribution
+        auto new_polar_coordinates = cartesian_to_polar({reco_data.x[iPnt], reco_data.y[iPnt]}, {current_ring[0][0], current_ring[1][0]});
+        hRadius_Distribution->Fill(1, new_polar_coordinates[0]);
+      }
+    }
   }
 
   //  === Graphics
   gROOT->SetBatch();
   system(Form("mkdir -p %s/", save_dir.c_str()));
-
-  gStyle->SetPalette(kInvertedDarkBodyRadiator);
 
   //  === === Persistance
   auto current_canvas = get_std_canvas();
@@ -97,6 +114,7 @@ void recoQA(std::string input_file = "recodata.root", std::string output_file = 
   hPersistance2D->Write();
   hMap_fullsetup_SiPM->Write();
   hMap_availsetup_SiPM->Write();
+  hRadius_Distribution->Write();
   out->Close();
 
   gROOT->SetBatch(kFALSE);
