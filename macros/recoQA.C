@@ -3,7 +3,7 @@
 #include "../lib/mapping.h"
 #include "../lib/utility.h"
 
-void recoQA(std::string input_file = "recodata_2.root", std::string output_file = "out.root", std::string save_dir = "./images/")
+void recoQA(std::string input_file = "recodata.root", std::string output_file = "out.root", std::string save_dir = "./images/")
 {
   //  Output
   auto hPersistance2D = new TH2F("hPersistance2D", ";X (mm);Y (mm); t (ns)", 396, -99, 99, 396, -99, 99);
@@ -26,10 +26,9 @@ void recoQA(std::string input_file = "recodata_2.root", std::string output_file 
     //  Recover recodata entry form tree
     reco_tree->GetEntry(iEv);
 
-    if ((iEv+1) % 10000 == 0)
+    if ((iEv) % 1000 == 0)
     {
       cout << "[INFO] event: " << iEv << endl;
-      break;
     }
 
     //  Persistance plot
@@ -44,15 +43,34 @@ void recoQA(std::string input_file = "recodata_2.root", std::string output_file 
         list_of_available_SiPMs.push_back({reco_data.x[iPnt], reco_data.y[iPnt]});
     }
   }
+
   /*
-  for (auto iPDU = 0; iPDU < 8; iPDU++)
+    for (auto iPDU = 0; iPDU < 8; iPDU++)
       for (auto iCol = 0; iCol < 16; iCol++)
-          for (auto iRow = 0; iRow < 16; iRow++)
-              fill_with_SiPM_coverage(hMap_fullsetup_SiPM, sipm4eic::get_position({iPDU, iCol, iRow}));
-  for (auto current_position : list_of_available_SiPMs)
+        for (auto iRow = 0; iRow < 16; iRow++)
+          fill_with_SiPM_coverage(hMap_fullsetup_SiPM, sipm4eic::get_position({iPDU, iCol, iRow}));
+    for (auto current_position : list_of_available_SiPMs)
       fill_with_SiPM_coverage(hMap_availsetup_SiPM, current_position);
-*/
+  */
+
   auto found_rings = fit_multiple_rings(hPersistance2D_initial_guess);
+
+  //  === Rings coverage plots
+  auto plot_check_coordinates = plot_check_coordinates(hPersistance2D, found_rings);
+  plot_check_coordinates->SaveAs(Form("%s/plot_check_coordinates.png", save_dir.c_str()));
+
+  //  Second loop on events
+  cout << "[INFO] Start of analysis loop" << endl;
+  for (int iEv = 0; iEv < reco_tree->GetEntries(); iEv++)
+  {
+    //  Recover recodata entry form tree
+    reco_tree->GetEntry(iEv);
+
+    if ((iEv) % 1000 == 0)
+    {
+      cout << "[INFO] event: " << iEv << endl;
+    }
+  }
 
   //  === Graphics
   gROOT->SetBatch();
@@ -74,9 +92,6 @@ void recoQA(std::string input_file = "recodata_2.root", std::string output_file 
   current_canvas = get_std_canvas();
   hMap_availsetup_SiPM->Draw();
   current_canvas->SaveAs(Form("%s/hMap_availsetup_SiPM.png", save_dir.c_str()));
-  //  === === === Rings coverage
-  current_canvas = plot_check_coordinates(hPersistance2D, found_rings);
-  current_canvas->SaveAs(Form("%s/plot_check_coordinates.png", save_dir.c_str()));
 
   TFile *out = new TFile(output_file.c_str(), "RECREATE");
   hPersistance2D->Write();
